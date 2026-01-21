@@ -139,7 +139,8 @@ namespace fsi
                     {
                         merged_tets[merged_idx * 4 + j] = mesh->h_tetrahedra[i * 4 + j] + vol_vertex_offset;
                     }
-                    real E = mesh->m_youngs_modulus;
+                    // real E = mesh->m_youngs_modulus;
+                    real E = mesh->m_youngs_modulus_per_tetrahedra[i];
                     real nu = mesh->m_poisson_ratio;
                     real kd = mesh->m_kd;
                     merged_tet_mu[merged_idx] = E / (2.0 * (1.0 + nu));
@@ -216,7 +217,8 @@ namespace fsi
                     merged_vertex_masses[mesh->h_triangles[i * 3 + 1] + vol_vertex_offset] += mass / 3.0;
                     merged_vertex_masses[mesh->h_triangles[i * 3 + 2] + vol_vertex_offset] += mass / 3.0;
 
-                    real E = mesh->m_youngs_modulus;
+                    // real E = mesh->m_youngs_modulus;
+                    real E = mesh->m_youngs_modulus_per_triangle[i];
                     real nu = mesh->m_poisson_ratio;
                     merged_tri_mu[merged_idx] = E / (2.0 * (1.0 + nu));
                     merged_tri_lambda[merged_idx] = (E * nu) / ((1.0 + nu) * (1.0 - 2.0 * nu));
@@ -817,7 +819,8 @@ namespace fsi
                     merged_vertex_masses[mesh->h_triangles[i * 3 + 1] + vol_vertex_offset] += mass / 3.0;
                     merged_vertex_masses[mesh->h_triangles[i * 3 + 2] + vol_vertex_offset] += mass / 3.0;
 
-                    real E = mesh->m_youngs_modulus;
+                    // real E = mesh->m_youngs_modulus;
+                    real E = mesh->m_youngs_modulus_per_triangle[i];
                     real nu = mesh->m_poisson_ratio;
                     merged_tri_mu[merged_idx] = E / (2.0 * (1.0 + nu));
                     merged_tri_lambda[merged_idx] = (E * nu) / ((1.0 + nu) * (1.0 - 2.0 * nu));

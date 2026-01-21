@@ -26,7 +26,17 @@ namespace fsi
             m_id = config.mesh_path.empty() ? "generated_body" : std::filesystem::path(config.mesh_path).stem().string();
 
             m_density = config.density;
+            // uniform modulus
             m_youngs_modulus = config.youngs_modulus;
+            // per-node modulus
+            if (config.use_per_node_modulus())
+            {
+                m_youngs_modulus_per_node = config.youngs_modulus_per_node;
+            }
+            else 
+            {
+                m_youngs_modulus_per_node.clear();
+            }
             m_poisson_ratio = config.poisson_ratio;
             m_kd = 1.0;
 
@@ -154,6 +164,57 @@ namespace fsi
                     ASSERT(false, "Unsupported mesh file format: {}", extension);
                 }
             }
+
+            if (use_per_node_modulus())
+            {
+                ASSERT(m_youngs_modulus_per_node.size() == getNumVertices(), 
+                    "Young's modulus per node size ({}) does not match mesh vertices ({})",
+                    m_youngs_modulus_per_node.size(), getNumVertices());
+            }
+
+            // Precompute per-triangle modulus
+            m_youngs_modulus_per_triangle.resize(getNumTriangles());
+            
+            for (size_t i = 0; i < getNumTriangles(); i++)
+            {
+                if (use_per_node_modulus())
+                {
+                    unsigned int v0 = h_triangles[3*i + 0];
+                    unsigned int v1 = h_triangles[3*i + 1];
+                    unsigned int v2 = h_triangles[3*i + 2];
+                    m_youngs_modulus_per_triangle[i] =
+                        ( m_youngs_modulus_per_node[v0]
+                        + m_youngs_modulus_per_node[v1]
+                        + m_youngs_modulus_per_node[v2] ) / real(3);
+                }
+                else 
+                {
+                    m_youngs_modulus_per_triangle[i] = m_youngs_modulus;
+                }
+            }
+
+            // Precompute per-tetrahedro modulus
+            m_youngs_modulus_per_tetrahedra.resize(getNumTetrahedra());
+
+            for (size_t i = 0; i < getNumTetrahedra(); i++)
+            {
+                if (use_per_node_modulus())
+                {
+                    unsigned int v0 = h_tetrahedra[4*i + 0];
+                    unsigned int v1 = h_tetrahedra[4*i + 1];
+                    unsigned int v2 = h_tetrahedra[4*i + 2];
+                    unsigned int v3 = h_tetrahedra[4*i + 3];
+                    m_youngs_modulus_per_tetrahedra[i] =
+                        ( m_youngs_modulus_per_node[v0]
+                        + m_youngs_modulus_per_node[v1]
+                        + m_youngs_modulus_per_node[v2]
+                        + m_youngs_modulus_per_node[v3] ) / real(4);
+                }
+                else
+                {
+                    m_youngs_modulus_per_tetrahedra[i] = m_youngs_modulus;
+                }
+            }
         }
 
         void Mesh3D::applyInitialTransform(const SolidBodyConfig3D &config)
@@ -272,7 +333,17 @@ namespace fsi
             m_id = config.mesh_path.empty() ? "generated_body" : std::filesystem::path(config.mesh_path).stem().string();
 
             m_density = config.density;
+            // uniform modulus
             m_youngs_modulus = config.youngs_modulus;
+            // per-node modulus
+            if (config.use_per_node_modulus())
+            {
+                m_youngs_modulus_per_node = config.youngs_modulus_per_node;
+            }
+            else 
+            {
+                m_youngs_modulus_per_node.clear();
+            }
             m_poisson_ratio = config.poisson_ratio;
 
             LOG_INFO("Creating DeformableMesh '{}'...", m_id);
@@ -396,6 +467,34 @@ namespace fsi
                 else
                 {
                     ASSERT(false, "Unsupported mesh file format: {}", extension);
+                }
+            }
+
+            if (use_per_node_modulus())
+            {
+                ASSERT(m_youngs_modulus_per_node.size() == getNumVertices(), 
+                    "Young's modulus per node size ({}) does not match mesh vertices ({})",
+                    m_youngs_modulus_per_node.size(), getNumVertices());
+            }
+
+            // Precompute per-triangle modulus
+            m_youngs_modulus_per_triangle.resize(getNumTriangles());
+            
+            for (size_t i = 0; i < getNumTriangles(); i++)
+            {
+                if (use_per_node_modulus())
+                {
+                    unsigned int v0 = h_triangles[3*i + 0];
+                    unsigned int v1 = h_triangles[3*i + 1];
+                    unsigned int v2 = h_triangles[3*i + 2];
+                    m_youngs_modulus_per_triangle[i] =
+                        ( m_youngs_modulus_per_node[v0]
+                        + m_youngs_modulus_per_node[v1]
+                        + m_youngs_modulus_per_node[v2] ) / real(3);
+                }
+                else 
+                {
+                    m_youngs_modulus_per_triangle[i] = m_youngs_modulus;
                 }
             }
         }

@@ -34,6 +34,17 @@ namespace fsi
             Mesh3D(Mesh3D &&) = default;
             Mesh3D &operator=(Mesh3D &&) = default;
 
+            // --- id and physical properties ---
+            std::string m_id;
+            real m_density;
+            real m_youngs_modulus;
+            std::vector<real> m_youngs_modulus_per_node;
+            real m_poisson_ratio;
+            real m_kd;
+            // precomputed element-wise modulus
+            std::vector<real> m_youngs_modulus_per_triangle;
+            std::vector<real> m_youngs_modulus_per_tetrahedra;
+
             // --- Public Getters ---
             const std::string &getId() const { return m_id; }
             int getNumVertices() const { return static_cast<int>(h_initial_positions.size()); }
@@ -41,19 +52,13 @@ namespace fsi
             int getNumTriangles() const { return static_cast<int>(h_triangles.size()) / 3; }
             int getNumControlPoint() const { return cnum; }
             std::vector<int> getControlPoint() const { return ctrl_idx; }
+            bool use_per_node_modulus() const {return !m_youngs_modulus_per_node.empty();}
 
             // LBS control
             void applyLBSControl(const std::vector<vec3_t> &lbs_shift, const std::vector<mat3_t> &lbs_rotation, vec3_t *lbs_position, int offset, cudaStream_t stream = nullptr);
 
             std::vector<int> h_surface_triangles_local_indices; // surface triangles, indices are local to surface vertices
             std::vector<int> h_surface_to_volume_map_local;     // surface vertex -> this body's volume vertex map
-
-            // --- id and physical properties ---
-            std::string m_id;
-            real m_density;
-            real m_youngs_modulus;
-            real m_poisson_ratio;
-            real m_kd;
 
             // --- host-side geometry and topology data ---
             // these data are typically read-only after loading
@@ -91,26 +96,30 @@ namespace fsi
             Mesh2D(Mesh2D &&) = default;
             Mesh2D &operator=(Mesh2D &&) = default;
 
+            std::string m_id;
+            real m_density;
+            real m_youngs_modulus;
+            std::vector<real> m_youngs_modulus_per_node;
+            real m_poisson_ratio;
+            real m_kd;
+            std::vector<vec2_t> h_initial_positions;
+            std::vector<unsigned int> h_triangles;
+            std::vector<unsigned int> h_edges;
+            // precomputed element-wise modulus
+            std::vector<real> m_youngs_modulus_per_triangle;
+
             const std::string &getId() const { return m_id; }
             int getNumVertices() const { return static_cast<int>(h_initial_positions.size()); }
             int getNumTriangles() const { return static_cast<int>(h_triangles.size()) / 3; }
             int getNumEdges() const { return static_cast<int>(h_edges.size()) / 2; }
             int getNumControlPoint() const { return cnum; }
             std::vector<int> getControlPoint() const { return ctrl_idx; }
+            bool use_per_node_modulus() const {return !m_youngs_modulus_per_node.empty();}
 
             void applyLBSControl(const std::vector<vec2_t> &lbs_shift, const std::vector<real> &lbs_rotation, CudaArray<vec2_t> &lbs_position, int offset, cudaStream_t stream = nullptr);
 
             std::vector<int> h_surface_edges_local_indices;
             std::vector<int> h_surface_to_area_map_local;
-
-            std::string m_id;
-            real m_density;
-            real m_youngs_modulus;
-            real m_poisson_ratio;
-            real m_kd;
-            std::vector<vec2_t> h_initial_positions;
-            std::vector<unsigned int> h_triangles;
-            std::vector<unsigned int> h_edges;
 
             // LBS control
             bool is_lbs_control_enabled;

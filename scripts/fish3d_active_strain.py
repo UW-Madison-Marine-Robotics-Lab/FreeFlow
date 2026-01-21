@@ -159,9 +159,13 @@ def run_test():
                    slice_idx, 2] ** 2 + fMom1[:, :, slice_idx, 3] ** 2) ** 0.5
             vel_img = cm.plasma(vel / 0.3)
         elif type == "vorticity":
-            ugrad = np.gradient(fMom1[:, :, 1])
-            vgrad = np.gradient(fMom1[:, :, 2])
-            vor = ugrad[1] - vgrad[0]
+            u = fMom1[:, :, slice_idx, 1]
+            v = fMom1[:, :, slice_idx, 2]
+
+            du_dy = np.gradient(u, axis=1)
+            dv_dx = np.gradient(v, axis=0)
+
+            vor = du_dy - dv_dx
             # vor[flag == lbm.SOLID_DYNAMIC] = 0.02
             colors = [
                 (151/255, 139/255, 229/255),
@@ -193,8 +197,8 @@ def run_test():
             simulator.apply_active_strain(mesh_id, tet_id, act_dir, action)
         simulator.step()
         if i % 20 == 0:
-            simulator.save_frame_data(i // 20, False, True)
-            # vis_slice(i // 20, "magnitude", NZ // 2)
+            # simulator.save_frame_data(i // 20, True, True)
+            vis_slice(i // 20, "vorticity", NZ // 2)
 
     simulator.end_profiler()
 

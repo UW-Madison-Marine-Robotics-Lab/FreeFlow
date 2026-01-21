@@ -66,7 +66,7 @@ find_package(glm REQUIRED)
 find_package(VTK REQUIRED)
 find_package(OpenMP REQUIRED)
 
-option(USE_CUDSS "Enable the cuDSS sparse direct solver" ON)
+option(USE_CUDSS "Enable the cuDSS sparse direct solver" OFF)
 option(USE_SUITESPARSE "Enable the CholmodLDLT solver" ON)
 
 if(USE_SUITESPARSE)

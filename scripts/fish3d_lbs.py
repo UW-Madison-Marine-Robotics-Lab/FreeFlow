@@ -21,6 +21,32 @@ NZ = 128
 mesh_path = Path(__file__).parent.parent / "assets" / "mesh" / "clownfish.mesh"
 
 
+def load_mesh_vertices(mesh_path):
+    """
+    read vertices from .mesh file
+    """
+    with open(mesh_path, "r") as f:
+        lines = f.readlines()
+
+    # find "Vertices"
+    i = 0
+    while i < len(lines) and lines[i].strip() != "Vertices":
+        i += 1
+    if i >= len(lines):
+        raise RuntimeError(f"No 'Vertices' section found in {mesh_path}")
+
+    n = int(lines[i + 1].strip())
+    verts = np.zeros((n, 3), dtype=np.float64)
+    for k in range(n):
+        parts = lines[i + 2 + k].split()
+        # parts: [x, y, z]
+        verts[k, 0] = float(parts[0])
+        verts[k, 1] = float(parts[1])
+        verts[k, 2] = float(parts[2])
+
+    return verts
+
+
 def make_config(config_path: str, output_path: str):
     config = {
         "dimension": 3,
@@ -46,7 +72,7 @@ def make_config(config_path: str, output_path: str):
             "ls_max_iter": 20,
             "ls_beta": 0.3,
             "ls_alpha": 1e-4,
-            "linear_solver_type": "cuda_lu",
+            "linear_solver_type": "cholmod_ldlt",
             "grad_check": False,
             "substeps": 3,
             "vbd_iterations": 30,
@@ -62,11 +88,16 @@ def make_config(config_path: str, output_path: str):
     nz = config["fluid_nz"]
     dx = config["fluid_dx"]
 
+    # assign stiffness per node
+    verts = load_mesh_vertices(mesh_path)
+    stiffness_per_node = np.where(verts[:, 0] > 0.0, 1e6, 1e5).astype(float).tolist()
+
     solid_body = {
         "mesh_path": str(mesh_path),
         "type": 'static',
         "density": 1000.0,
-        "youngs_modulus": 1e5,
+        # "youngs_modulus": 1e5,
+        "youngs_modulus_per_node": stiffness_per_node,
         "poisson_ratio": 0.45,
         "translate": [0.25 * nx * dx, 0.5 * ny * dx, 0.5 * nz * dx],
         "scale": [1.3, 1.3, 1.3],
@@ -144,7 +175,7 @@ def run_test():
     simulator = fsi.Simulator3D(params)
     simulator.initialize()
 
-    gui = ti.GUI("LBM3D", (NX, NY))
+    gui = ti.GUI("LBM3D", (NX, NY), show_gui=False)
 
     def vis_slice(f, type="magnitude", slice_idx=50):
         fMom1 = simulator.get_fluid_moments().transpose(2, 1, 0, 3)
@@ -153,9 +184,13 @@ def run_test():
                    slice_idx, 2] ** 2 + fMom1[:, :, slice_idx, 3] ** 2) ** 0.5
             vel_img = cm.plasma(vel / 0.3)
         elif type == "vorticity":
-            ugrad = np.gradient(fMom1[:, :, 1])
-            vgrad = np.gradient(fMom1[:, :, 2])
-            vor = ugrad[1] - vgrad[0]
+            u = fMom1[:, :, slice_idx, 1]
+            v = fMom1[:, :, slice_idx, 2]
+
+            du_dy = np.gradient(u, axis=1)
+            dv_dx = np.gradient(v, axis=0)
+
+            vor = du_dy - dv_dx
             # vor[flag == lbm.SOLID_DYNAMIC] = 0.02
             colors = [
                 (151/255, 139/255, 229/255),
@@ -173,7 +208,7 @@ def run_test():
 
     simulator.begin_profiler("3d clownfish actuated by lbs control")
     axis = np.array([0.0, 0.0, 1.0])
-    for _ in range(3):
+    for _ in range(1):
         for i in range(4000):
             if i % 40 == 0:
                 pos = np.array(simulator.getVertices())
@@ -186,9 +221,9 @@ def run_test():
                 simulator.apply_lbs_control(0, shift, rotation)
                 # print(shift, rotation)
             simulator.step()
-        # if i % 20 == 0:
-        #     simulator.save_frame_data(i // 20, False, True)
-            # vis_slice(i // 20, "magnitude", NZ // 2)
+            # if i % 20 == 0:
+            #     simulator.save_frame_data(i // 100, False, True)
+            #     vis_slice(i // 20, "vorticity", NZ // 2)
         simulator.reset()
     simulator.end_profiler()
 

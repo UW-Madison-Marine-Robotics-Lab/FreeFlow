@@ -73,7 +73,7 @@ cd FreeFlow
 ### Step 2: Export vcpkg environment variables
 
 ~~~bash
-export VCPKG_ROOTCMAKE_TOOLCHAIN_FILE=$path/to/your/vcpkg/scripts/buildsystems/vcpkg.cmake
+export CMAKE_TOOLCHAIN_FILE=$path/to/your/vcpkg/scripts/buildsystems/vcpkg.cmake
 ~~~
 
 ### Step 3: Build with python bindings
@@ -155,6 +155,45 @@ Below is an example of a configuration file for a free-form soft swimmer:
 }
 ```
 There are some exmaple Python scripts in the `scripts` folder that show how to invoke the simulator's Python interface.
+
+### Running on Lab PC
+Edit `~/.ssh/config` for ssh connection:
+
+```shell
+Host labpc
+    HostName 10.139.220.48
+    User uw-mrl
+    PubkeyAuthentication no
+```
+
+First, synchornize the project to the lab PC:
+
+```shell
+#!/usr/bin/env bash
+set -euo pipefail
+
+rsync -az --delete \
+    --exclude .git/ \
+    --exclude build*/ \
+    --exclude .vscode/ \
+    --exclude .DS_Store \
+    --exclude docs/ \
+    --exclude assets/configs/ \
+    ./ labpc:~/Desktop/remote_projects/FreeFlow
+```
+
+Then use `tmux` to run a script:
+
+```shell
+ssh labpc
+tmux new -s myrun
+conda activate fsi
+cd ~/Desktop/remote_projects/FreeFlow/scripts/
+python <python script>
+# detach with: Ctrl-b then d
+# re-attach with tmux attach (-t myrun)
+# kill with tmux kill-session -t myrun
+```
 
 ## RL Training
 

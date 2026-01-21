@@ -90,7 +90,8 @@ namespace fsi
             // --- 几何和物理属性 ---
             std::string mesh_path;
             real density = 1000.0;
-            real youngs_modulus = 1.0e6;
+            real youngs_modulus = 1.0e6;                    // uniform modulus
+            std::vector<real> youngs_modulus_per_node;      // per-node modulus
             real poisson_ratio = 0.45;
 
             // 初始状态
@@ -100,13 +101,26 @@ namespace fsi
             std::array<real, 2> initial_velocity = {0.0, 0.0};
 
             LBSControlConfig lbs_control_config;
+
+            bool use_per_node_modulus() const 
+            {
+                return !youngs_modulus_per_node.empty();
+            }
         };
 
         inline void from_json(const nlohmann::json &j, SolidBodyConfig2D &config)
         {
             config.mesh_path = j.value("mesh_path", config.mesh_path);
             config.density = j.value("density", config.density);
+            
+            // uniform modulus
             config.youngs_modulus = j.value("youngs_modulus", config.youngs_modulus);
+            // per-node modulus
+            if (j.contains("youngs_modulus_per_node"))
+            {
+                config.youngs_modulus_per_node = j.at("youngs_modulus_per_node").get<std::vector<real>>();
+            }
+            
             config.poisson_ratio = j.value("poisson_ratio", config.poisson_ratio);
             config.translate = j.value("translate", config.translate);
             config.rotate = j.value("rotate", config.rotate);
@@ -120,7 +134,8 @@ namespace fsi
             // --- 几何和物理属性 ---
             std::string mesh_path;
             real density = 1000.0;
-            real youngs_modulus = 1.0e6;
+            real youngs_modulus = 1.0e6;                // uniform modulus
+            std::vector<real> youngs_modulus_per_node;      // per-node modulus
             real poisson_ratio = 0.45;
 
             // 初始状态
@@ -131,13 +146,26 @@ namespace fsi
 
             // LBS控制
             LBSControlConfig lbs_control_config;
+
+            bool use_per_node_modulus() const 
+            {
+                return !youngs_modulus_per_node.empty();
+            }
         };
 
         inline void from_json(const nlohmann::json &j, SolidBodyConfig3D &config)
         {
             config.mesh_path = j.value("mesh_path", config.mesh_path);
             config.density = j.value("density", config.density);
+
+            // uniform modulus
             config.youngs_modulus = j.value("youngs_modulus", config.youngs_modulus);
+            // per-node modulus
+            if (j.contains("youngs_modulus_per_node"))
+            {
+                config.youngs_modulus_per_node = j.at("youngs_modulus_per_node").get<std::vector<real>>();
+            }
+            
             config.poisson_ratio = j.value("poisson_ratio", config.poisson_ratio);
             config.translate = j.value("translate", config.translate);
             config.rotate = j.value("rotate", config.rotate);
