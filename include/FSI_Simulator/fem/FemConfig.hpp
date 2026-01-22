@@ -74,6 +74,12 @@ namespace fsi
             bool random_first = false;
             real omega = 0.5;
             real stiffness = 10.0;
+
+            std::vector<int> ctrl_idx;
+            bool use_user_ctrl_points() const 
+            {
+                return !ctrl_idx.empty();
+            }
         };
 
         inline void from_json(const nlohmann::json &j, LBSControlConfig &config)
@@ -83,6 +89,25 @@ namespace fsi
             config.random_first = j.value("random_first", config.random_first);
             config.omega = j.value("omega", config.omega);
             config.stiffness = j.value("stiffness", config.stiffness);
+
+            // (Optional) control point indices
+            if (j.contains("ctrl_idx"))
+            {
+                config.ctrl_idx = j.at("ctrl_idx").get<std::vector<int>>();
+                for (int idx : config.ctrl_idx)
+                {
+                    ASSERT(idx >= 0, "Control point indices must be >= 0.");
+                }
+                ASSERT(
+                    (int)config.ctrl_idx.size() == config.cnum,
+                    "ctrl_idx size ({}) must match cnum ({})",
+                    config.ctrl_idx.size(), config.cnum
+                );
+            }
+            else 
+            {
+                config.ctrl_idx.clear();
+            }
         }
 
         struct SolidBodyConfig2D

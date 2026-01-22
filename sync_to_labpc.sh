@@ -8,4 +8,5 @@ rsync -az --delete \
     --exclude .DS_Store \
     --exclude docs/ \
     --exclude assets/configs/ \
+    --exclude output/ \
     ./ labpc:~/Desktop/remote_projects/FreeFlow

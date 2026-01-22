@@ -71,11 +71,26 @@ namespace fsi
                 d_lbs_weight.resize(getNumVertices() * cnum);
 
                 std::vector<real> lbs_dist;
-                control::farthest_point_sampling(
-                    getNumVertices(), h_initial_positions, h_tetrahedra,
-                    cnum, ctrl_idx, lbs_dist,
-                    config.lbs_control_config.lbs_distance_type,
-                    config.lbs_control_config.random_first);
+                if (config.lbs_control_config.use_user_ctrl_points())
+                {
+                    LOG_INFO("Use user-defined control points");
+                    ctrl_idx = config.lbs_control_config.ctrl_idx;
+                    // compute lbs_dist
+                    control::set_control_points(
+                        getNumVertices(), h_initial_positions, h_tetrahedra,
+                        ctrl_idx, lbs_dist,
+                        config.lbs_control_config.lbs_distance_type
+                    );
+                }
+                else
+                {
+                    LOG_INFO("Sample farthest control points");
+                    control::farthest_point_sampling(
+                        getNumVertices(), h_initial_positions, h_tetrahedra,
+                        cnum, ctrl_idx, lbs_dist,
+                        config.lbs_control_config.lbs_distance_type,
+                        config.lbs_control_config.random_first);
+                }
 
                 CudaArray<real> d_lbs_dist(lbs_dist.size());
                 d_lbs_dist.upload(lbs_dist);
@@ -378,11 +393,24 @@ namespace fsi
                 d_lbs_weight.resize(getNumVertices() * cnum);
 
                 std::vector<real> lbs_dist;
-                control::farthest_point_sampling(
-                    getNumVertices(), h_initial_positions, h_triangles,
-                    cnum, ctrl_idx, lbs_dist,
-                    config.lbs_control_config.lbs_distance_type,
-                    config.lbs_control_config.random_first);
+                if (config.lbs_control_config.use_user_ctrl_points())
+                {
+                    ctrl_idx = config.lbs_control_config.ctrl_idx;
+                    // compute lbs_dist
+                    control::set_control_points(
+                        getNumVertices(), h_initial_positions, h_triangles,
+                        ctrl_idx, lbs_dist,
+                        config.lbs_control_config.lbs_distance_type
+                    );
+                }
+                else 
+                {
+                    control::farthest_point_sampling(
+                        getNumVertices(), h_initial_positions, h_triangles,
+                        cnum, ctrl_idx, lbs_dist,
+                        config.lbs_control_config.lbs_distance_type,
+                        config.lbs_control_config.random_first);
+                }
 
                 CudaArray<real> d_lbs_dist(lbs_dist.size());
                 d_lbs_dist.upload(lbs_dist);

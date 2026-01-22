@@ -174,6 +174,7 @@ namespace fsi
                 first_point_idx = std::distance(vpos.begin(), max_x_iter);
             }
             v_ctrl[0] = first_point_idx;
+            LOG_INFO("Selected point {} as the first control point.", first_point_idx);
 
             // --- 2. iterate to choose remaining control points ---
             std::vector<real> dist(vnum, std::numeric_limits<real>::max());
@@ -271,6 +272,7 @@ namespace fsi
                 first_point_idx = std::distance(vpos.begin(), max_x_iter);
             }
             v_ctrl[0] = first_point_idx;
+            LOG_INFO("Selected point {} as the first control point.", first_point_idx);
 
             std::vector<real> dist(vnum, std::numeric_limits<real>::max());
 
@@ -336,5 +338,101 @@ namespace fsi
             }
         }
 
+        void set_control_points(
+            int vnum, const std::vector<vec3_t> &vpos, const std::vector<unsigned int> &tetvIdx,
+            std::vector<int> &v_ctrl, std::vector<real> &lbs_dist,
+            std::string lbs_distance_type
+        )
+        {
+            const int cnum = (int)v_ctrl.size();
+            lbs_dist.resize((size_t)cnum * (size_t)vnum);
+
+            // adjacency for geodesic
+            std::vector<std::vector<std::pair<int, real>>> adj;
+            if (lbs_distance_type == "geodesic")
+            {
+                LOG_INFO("Building adjacency list for geodesic distance calculation...");
+                adj = build_adjacency_list(vnum, vpos, tetvIdx);
+                LOG_INFO("Adjacency list built.");
+            }
+
+            if (lbs_distance_type == "euclidean")
+            {
+                for (int i = 0; i < cnum; ++i)
+                {
+                    const int ci = v_ctrl[i];
+                    for (int j = 0; j < vnum; ++j)
+                    {
+                        lbs_dist[(size_t)j * cnum + i] = glm::distance(vpos[j], vpos[ci]);
+                    }
+                }
+            }
+            else if (lbs_distance_type == "geodesic")
+            {
+                for (int i = 0; i < cnum; ++i)
+                {
+                    const int ci = v_ctrl[i];
+                    LOG_INFO("Computing geodesic distances from ctrl point {} (v={})...", i, ci);
+                    std::vector<real> d = dijkstra(ci, vnum, adj);
+                    for (int j = 0; j < vnum; ++j)
+                    {
+                        lbs_dist[(size_t)j * cnum + i] = d[j];
+                    }
+                }
+            }
+            else
+            {
+                ASSERT(false, "Unknown LBS distance type: {}", lbs_distance_type);
+            }
+        }
+
+        void set_control_points(
+            int vnum, const std::vector<vec2_t> &vpos, const std::vector<unsigned int> &trivIdx,
+            std::vector<int> &v_ctrl, std::vector<real> &lbs_dist,
+            std::string lbs_distance_type
+        )
+        {
+            const int cnum = (int)v_ctrl.size();
+            lbs_dist.resize((size_t)cnum * (size_t)vnum);
+
+            std::vector<std::vector<std::pair<int, real>>> adj;
+            if (lbs_distance_type == "geodesic")
+            {
+                LOG_INFO("Building adjacency list for geodesic distance calculation...");
+                adj = build_adjacency_list(vnum, vpos, trivIdx);
+                LOG_INFO("Adjacency list built.");
+            }
+
+            if (lbs_distance_type == "euclidean")
+            {
+                for (int i = 0; i < cnum; ++i)
+                {
+                    const int ci = v_ctrl[i];
+                    for (int j = 0; j < vnum; ++j)
+                    {
+                        lbs_dist[(size_t)j * cnum + i] = glm::distance(vpos[j], vpos[ci]);
+                    }
+                }
+            }
+            else if (lbs_distance_type == "geodesic")
+            {
+                for (int i = 0; i < cnum; ++i)
+                {
+                    const int ci = v_ctrl[i];
+                    LOG_INFO("Calculating geodesic distances from user control point {} (v={})...", i, ci);
+
+                    std::vector<real> d = dijkstra(ci, vnum, adj);
+
+                    for (int j = 0; j < vnum; ++j)
+                    {
+                        lbs_dist[(size_t)j * cnum + i] = d[j];
+                    }
+                }
+            }
+            else
+            {
+                ASSERT(false, "Unknown LBS distance type: {}", lbs_distance_type);
+            }
+        }
     }
 }

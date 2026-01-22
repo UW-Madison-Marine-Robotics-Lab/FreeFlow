@@ -27,5 +27,18 @@ namespace fsi
             int cnum, std::vector<int> &v_ctrl, std::vector<real> &lbs_dist,
             std::string lbs_distance_type,
             bool random_first);
+
+        // user-defined control points setup
+        void set_control_points(
+            int vnum, const std::vector<vec3_t> &vpos, const std::vector<unsigned int> &tetvIdx,
+            std::vector<int> &v_ctrl, std::vector<real> &lbs_dist,
+            std::string lbs_distance_type
+        );
+
+        void set_control_points(
+            int vnum, const std::vector<vec2_t> &vpos, const std::vector<unsigned int> &trivIdx,
+            std::vector<int> &v_ctrl, std::vector<real> &lbs_dist,
+            std::string lbs_distance_type
+        );
     }
 }

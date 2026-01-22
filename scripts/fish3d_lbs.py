@@ -105,6 +105,7 @@ def make_config(config_path: str, output_path: str):
             "cnum": 3,
             "omega": 0.3,
             "stiffness": 10.0,
+            "ctrl_idx": [659, 813, 376]
         }
     }
     config["solids"].append(solid_body)
