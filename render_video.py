@@ -124,14 +124,19 @@ c = center(traj)
 dx, dy, dz = traj[1]-traj[0], traj[3]-traj[2], traj[5]-traj[4]
 span = max(dx, dy, dz)
 
-# top-down camera (looking along -Z)
 view.CameraParallelProjection = 1
+# top-down camera (looking along -Z)
 view.CameraFocalPoint = c
 view.CameraPosition   = [c[0], c[1], c[2] + 3.0*span]   # higher = more zoomed out
 view.CameraViewUp     = [0, 1, 0]                       # keep +Y as "up" on screen
-
 # zoom: use X/Y span since we look down Z
 view.CameraParallelScale = 0.55 * max(dx, dy)           # increase if fish leaves frame
+
+# back camera
+view.CameraFocalPoint = c
+view.CameraPosition   = [c[0] - 3.0*span, c[1], c[2]]
+view.CameraViewUp     = [0, 0, 1]
+view.CameraParallelScale = 0.7 * max(dy, dz)
 
 # -------- save AVI --------
 SaveAnimation(f"./output/{job}/video.avi", view, FrameRate=10, ImageResolution=[1920, 1080])
