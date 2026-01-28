@@ -12,13 +12,13 @@ NX = 512
 NY = 128
 NZ = 128
 
-mesh_path = Path(__file__).parent.parent / "assets" / "mesh" / "clownfish_dense.mesh"
+mesh_path = Path(__file__).parent.parent / "assets" / "mesh" / "bluegill_sunfish.mesh"
 
 # Fin area geometry
-PENDUCLE_Z_LB = -71e-3
-PENDUCLE_Z_UB = 73e-3
-FIN_POST_LB = (-157e-3, -119e-3)      # (X, Z)
-FIN_POST_UB = (-225e-3, 131e-3)       # (X, Z)
+PENDUCLE_Z_LB = -45e-3
+PENDUCLE_Z_UB = 45e-3
+FIN_POST_LB = (-174e-3, -127e-3)      # (X, Z)
+FIN_POST_UB = (-174e-3, 127e-3)       # (X, Z)
 RAY_NUM = 6
 
 def load_mesh_vertices(mesh_path):
@@ -123,7 +123,7 @@ def get_fin_ctrl_vertices(verts, N=6):
     return ctrl_idx.astype(int)
 
 
-def find_vertices_on_xz_segment(verts, p0, p1, dist_tol=1e-2):
+def find_vertices_on_xz_segment(verts, p0, p1, dist_tol):
     """
     Find vertices on a xz plane segment
     
@@ -228,7 +228,9 @@ def make_config(config_path: str, output_path: str):
     ray_regions = get_fin_ray_regions(verts, ctrl_idx)
     ray_set = set(np.concatenate(ray_regions).astype(int))
     stiffness_per_node = [
-        1e6 if i in ray_set else 1e5
+        1e7 if i in ray_set else
+        .5e6 if verts[i, 0] < 0.02 else
+        1e6
         for i in range(len(verts))
     ]
 
@@ -347,26 +349,28 @@ def run_test():
 
         gui.show(str(output_path / f"{f:03d}.png"))
 
-    simulator.begin_profiler("3d clownfish actuated by lbs control")
+    simulator.begin_profiler("3d bluegill sunfish actuated by lbs control")
     axis = np.array([0.0, 0.0, 1.0])
     for _ in range(1):
         for i in range(4000):
-            if i % 10 == 0:
+            if i % 20 == 0:  
                 pos = np.array(simulator.getVertices())
                 x = pos.mean(axis=0)
                 print(f"Step {i} mean x {x}")
-                angle = np.sin(2 * np.pi * i / 600) * np.pi / 4
+                angle = np.sin(2 * np.pi * i / 200) * np.pi / 4
+                heave = np.sin(2 * np.pi * i / 200) * 1e-2
                 shift = np.zeros((RAY_NUM * 2 + 1, 3))
+                shift[:RAY_NUM, 1] = heave
                 rotation = np.array(
-                    [rotation_matrix(axis, -angle / 2)] * RAY_NUM +
+                    [np.eye(3)] * RAY_NUM +
                     [rotation_matrix(axis, -angle)] * RAY_NUM +
                     [np.eye(3)]
                 )
                 simulator.apply_lbs_control(0, shift, rotation)
             simulator.step()
-            # if i % 20 == 0:
+            if i % 20 == 0:
                 # simulator.save_frame_data(i // 20, True, True)
-                # vis_slice(i // 20, "vorticity", NZ // 2)
+                vis_slice(i // 20, "vorticity", NZ // 2)
         simulator.reset()
     simulator.end_profiler()
 

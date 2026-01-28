@@ -46,9 +46,16 @@ parser.add_argument(
     required=True,
     help="Job folder name under ./output/, e.g. fish3d_lbs"
 )
+parser.add_argument(
+    "--view",
+    choices=["top", "back", "side"],
+    default="top",
+    help="Camera view direction: top (default), back, or side"
+)
 args, _ = parser.parse_known_args()
 
 job = args.job_name
+view_mode = args.view
 
 # -------- inputs --------
 fluid_files = series(f"./output/{job}/fluid_frame_*.vtk")  # XML ImageData, mislabeled .vtk
@@ -125,19 +132,28 @@ dx, dy, dz = traj[1]-traj[0], traj[3]-traj[2], traj[5]-traj[4]
 span = max(dx, dy, dz)
 
 view.CameraParallelProjection = 1
-# top-down camera (looking along -Z)
 view.CameraFocalPoint = c
-view.CameraPosition   = [c[0], c[1], c[2] + 3.0*span]   # higher = more zoomed out
-view.CameraViewUp     = [0, 1, 0]                       # keep +Y as "up" on screen
-# zoom: use X/Y span since we look down Z
-view.CameraParallelScale = 0.55 * max(dx, dy)           # increase if fish leaves frame
 
-# back camera
-view.CameraFocalPoint = c
-view.CameraPosition   = [c[0] - 3.0*span, c[1], c[2]]
-view.CameraViewUp     = [0, 0, 1]
-view.CameraParallelScale = 0.7 * max(dy, dz)
+if view_mode == "top":
+    # top-down camera (looking along -Z)
+    view.CameraFocalPoint = c
+    view.CameraPosition   = [c[0], c[1], c[2] + 3.0*span]   # higher = more zoomed out
+    view.CameraViewUp     = [0, 1, 0]                       # keep +Y as "up" on screen
+    # zoom: use X/Y span since we look down Z
+    view.CameraParallelScale = 0.55 * max(dx, dy)           # increase if fish leaves frame
+elif view_mode == "back":
+    # back view 
+    view.CameraPosition   = [c[0] - 3.0*span, c[1], c[2]]
+    view.CameraViewUp     = [0, 0, 1]
+    view.CameraParallelScale = 0.55 * max(dy, dz)
+elif view_mode == "side":
+    # side view
+    view.CameraPosition = [c[0], c[1] - 3.0 * span, c[2]]
+    view.CameraViewUp   = [0, 0, 1]
+    # zoom: use X/Z span
+    view.CameraParallelScale = 0.55 * max(dx, dz)
+
 
 # -------- save AVI --------
-SaveAnimation(f"./output/{job}/video.avi", view, FrameRate=10, ImageResolution=[1920, 1080])
-print("Saved video.avi")
+SaveAnimation(f"./output/{job}/video_{view_mode}.avi", view, FrameRate=10, ImageResolution=[1920, 1080])
+print(f"Saved video_{view_mode}.avi")
