@@ -1,3 +1,9 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Jiayi Jin
+
+# Commons Clause addition:
+# This software is provided for non-commercial use only. See LICENSE file for details.
+
 from paraview.simple import *
 from paraview import servermanager
 import glob, re
@@ -89,7 +95,7 @@ cont.ContourBy = ["POINTS", "Q Criterion"]   # <-- exact name from your output
 # Tune these isovalues to get more/less rings:
 # If you see nothing -> divide by 10
 # If it's a big blob -> multiply by 10
-cont.Isosurfaces = [0.02, 0.05, 0.1]
+cont.Isosurfaces = [0.005, 0.01, 0.02, 0.05, 0.1]
 
 surf = ExtractSurface(Input=cont)
 

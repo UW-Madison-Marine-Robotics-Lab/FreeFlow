@@ -1,5 +1,12 @@
+# SPDX-License-Identifier: MIT
+# Copyright (c) 2026 Jiayi Jin
+
+# Commons Clause addition:
+# This software is provided for non-commercial use only. See LICENSE file for details.
+
 import matplotlib.cm as cm
 import matplotlib
+import matplotlib.pyplot as plt
 import taichi as ti
 from pathlib import Path
 import sys
@@ -227,6 +234,20 @@ def make_config(config_path: str, output_path: str):
     # assign stiffness per node
     ray_regions = get_fin_ray_regions(verts, ctrl_idx)
     ray_set = set(np.concatenate(ray_regions).astype(int))
+
+    # plt.figure()
+    # xz_ray = verts[np.array(list(ray_set), dtype=int)][:, [0, 2]]
+    # xz_ctrl = verts[np.asarray(ctrl_idx, dtype=int)][:, [0, 2]]
+    # plt.scatter(xz_ray[:, 0], xz_ray[:, 1], s=5, label="Ray vertices")
+    # plt.scatter(
+    #     xz_ctrl[:-1, 0], xz_ctrl[:-1, 1],
+    #     s=40, c="red", marker="o", label="Control points"
+    # )
+    # plt.xlabel("x")
+    # plt.ylabel("z")
+    # plt.axis("equal")
+    # plt.show()
+
     stiffness_per_node = [
         1e7 if i in ray_set else
         .5e6 if verts[i, 0] < 0.02 else
@@ -351,27 +372,26 @@ def run_test():
 
     simulator.begin_profiler("3d bluegill sunfish actuated by lbs control")
     axis = np.array([0.0, 0.0, 1.0])
-    for _ in range(1):
-        for i in range(4000):
-            if i % 20 == 0:  
-                pos = np.array(simulator.getVertices())
-                x = pos.mean(axis=0)
-                print(f"Step {i} mean x {x}")
-                angle = np.sin(2 * np.pi * i / 200) * np.pi / 4
-                heave = np.sin(2 * np.pi * i / 200) * 1e-2
-                shift = np.zeros((RAY_NUM * 2 + 1, 3))
-                shift[:RAY_NUM, 1] = heave
-                rotation = np.array(
-                    [np.eye(3)] * RAY_NUM +
-                    [rotation_matrix(axis, -angle)] * RAY_NUM +
-                    [np.eye(3)]
-                )
-                simulator.apply_lbs_control(0, shift, rotation)
-            simulator.step()
-            if i % 20 == 0:
-                # simulator.save_frame_data(i // 20, True, True)
-                vis_slice(i // 20, "vorticity", NZ // 2)
-        simulator.reset()
+    for i in range(2000):
+        if i % 4 == 0:  
+            pos = np.array(simulator.getVertices())
+            x = pos.mean(axis=0)
+            print(f"Step {i} mean x {x}")
+            # angle = np.sin(2 * np.pi * i / 200) * np.pi / 4   # flat motion
+            angles = [np.sin(2 * np.pi * (i / 200 + j / (RAY_NUM * 4))) * np.pi / 4 for j in range(RAY_NUM)]    # undulation
+            heave = np.sin(2 * np.pi * i / 200) * 1e-2
+            shift = np.zeros((RAY_NUM * 2 + 1, 3))
+            shift[:RAY_NUM, 1] = heave
+            rotation = np.array(
+                [np.eye(3)] * RAY_NUM +
+                [rotation_matrix(axis, -angles[j]) for j in range(RAY_NUM)] +
+                [np.eye(3)]
+            )
+            simulator.apply_lbs_control(0, shift, rotation)
+        simulator.step()
+        if i % 20 == 0:
+            # simulator.save_frame_data(i // 20, True, True)
+            vis_slice(i // 20, "vorticity", NZ // 2)
     simulator.end_profiler()
 
 

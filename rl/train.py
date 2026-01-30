@@ -21,6 +21,16 @@
 #
 # The modifications are provided under the terms of the license of this project.
 # --------------------------------------------------------------------------------
+
+# --------------------------------------------------------------------------------
+# Modifications Copyright 2026 Jiayi Jin
+#
+# This file has been significantly modified from its original version in
+# the Popular-RL-Algorithms library. The original license and copyright
+# notices are retained above.
+#
+# The modifications are provided under the terms of the license of this project.
+# --------------------------------------------------------------------------------
  
 import numpy as np
 import os

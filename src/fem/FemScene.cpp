@@ -4,6 +4,16 @@
 // Commons Clause addition:
 // This software is provided for non-commercial use only. See LICENSE file for details.
 
+// --------------------------------------------------------------------------------
+// Modifications Copyright 2026 Jiayi Jin
+//
+// This file has been significantly modified from its original version in
+// the FreeFlow library. The original license and copyright
+// notices are retained above.
+//
+// The modifications are provided under the terms of the license of this project.
+// --------------------------------------------------------------------------------
+
 #include "FSI_Simulator/fem/FemScene.hpp"
 #include "FSI_Simulator/utils/Logger.hpp"
 #include "FSI_Simulator/graph/Mcs.hpp"
