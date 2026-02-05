@@ -205,6 +205,13 @@ cd rl
 python train.py --gpus "0,1" --train --cfg_path ./task.json
 # test
 python train.py --test --cfg_path ./task.json
+# export video
+pvpython render_rl_test.py --cfg_path ./task.json --view top/side/back
+```
+
+Watch GPU activity:
+```shell
+watch -n 1 nvidia-smi
 ```
 
 The models shown in the paper are provided in the `assets` folder. You can modify the training task configuration file to change the model or training parameters.

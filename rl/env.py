@@ -4,8 +4,18 @@
 # Commons Clause addition:
 # This software is provided for non-commercial use only. See LICENSE file for details.
 
+# --------------------------------------------------------------------------------
+# Modifications Copyright 2026 Jiayi Jin
+#
+# This file has been significantly modified from its original version in
+# the Popular-RL-Algorithms library. The original license and copyright
+# notices are retained above.
+#
+# The modifications are provided under the terms of the license of this project.
+# --------------------------------------------------------------------------------
+
 import json
-from utils import create_folder, to_integer_array, to_real_array, eulerAnglesToRotationMatrix3D
+from utils import create_folder, to_integer_array, to_real_array, eulerAnglesToRotationMatrix3D, load_mesh_vertices, get_fin_ctrl_vertices, get_fin_ray_regions, expand_action_range, FIN_ANT_LB
 import taichi as ti
 import numpy as np
 import matplotlib.cm as cm
@@ -31,8 +41,9 @@ class BaseEnv(ABC):
             self.experiment_name / self.model_name
         create_folder(self.data_dir, exist_ok=True)
 
-        self.config_path = self.data_dir / "config.json"
-        self.action_size = self.cfg["action_size"]
+        self.config_path = self.data_dir / "config.json"        
+        self.ray_num = self.cfg['ray_num']
+        self.action_size = (3 if self.dim == 2 else 6 if self.dim == 3 else None) * (2 * self.ray_num + 2)
         # if not self.config_path.exists():
         lock_path = str(self.config_path) + ".lock"
         lock = FileLock(lock_path)
@@ -359,29 +370,57 @@ class LBSEnv(BaseEnv):
             "translate": 0.2,
             "rotate": 0.2,
         })
+        n_trans = self.dim 
+        n_rot = 3 if self.dim == 3 else 1
+        trans_range = expand_action_range(ranges["translate"], n_trans)
+        rot_range = expand_action_range(ranges["rotate"], n_rot)
+
         for i in range(self.action_size):
-            if i % (2 * self.dim) < self.dim:
-                self.action_range[i] = ranges["translate"]
+            j = i % (n_trans + n_rot)
+            if j < self.dim:
+                self.action_range[i] = trans_range[j]
             else:
-                self.action_range[i] = ranges["rotate"]
+                self.action_range[i] = rot_range[j - n_trans]
+            
+        self.action_range[-2 * (n_trans + n_rot):] = 0
 
         self.shift = np.zeros((self.cnum, self.dim))
         self.rotation = np.zeros(
             (self.cnum, 3, 3)) if self.dim == 3 else np.zeros((self.cnum))
 
     def transfer_params(self):
+        # get cnum
         if self.dim == 2:
             assert self.action_size % 3 == 0, "action_size should be divisible by 3 for 2D LBS."
             self.cnum = self.action_size // 3
         elif self.dim == 3:
             assert self.action_size % 6 == 0, "action_size should be divisible by 6 for 3D LBS."
             self.cnum = self.action_size // 6
-
+        
+        # lbs control config
         self.config["solids"][0]["lbs_control_config"]["cnum"] = self.cnum
         self.config["solids"][0]["lbs_control_config"]["omega"] = self.cfg.get(
             "omega", self.config["solids"][0]["lbs_control_config"]["omega"])
         self.config["solids"][0]["lbs_control_config"]["stiffness"] = self.cfg.get(
             "stiffness", self.config["solids"][0]["lbs_control_config"]["stiffness"])
+        
+        # solid body config
+        verts = load_mesh_vertices(self.config["solids"][0]["mesh_path"])
+        ctrl_idx = get_fin_ctrl_vertices(verts, self.cfg['ray_num'])
+        self.config["solids"][0]["lbs_control_config"]["ctrl_idx"] = ctrl_idx.tolist()
+
+        ray_regions = get_fin_ray_regions(verts, ctrl_idx)
+        ray_set = set(np.concatenate(ray_regions).astype(int))
+        # TODO: assign modulus using config input
+        # Now hard coded
+        stiffness_per_node = [
+            1e7 if i in ray_set else
+            .5e6 if verts[i, 0] < FIN_ANT_LB[0] else
+            1e6
+            for i in range(len(verts))
+        ]
+        self.config["solids"][0]["youngs_modulus_per_node"] = stiffness_per_node
+
 
     def process_action(self, action):
         self.actions = action.copy() * self.action_range

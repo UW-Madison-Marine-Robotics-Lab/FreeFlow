@@ -22,10 +22,12 @@ NZ = 128
 mesh_path = Path(__file__).parent.parent / "assets" / "mesh" / "bluegill_sunfish.mesh"
 
 # Fin area geometry
-PENDUCLE_Z_LB = -45e-3
-PENDUCLE_Z_UB = 45e-3
-FIN_POST_LB = (-174e-3, -127e-3)      # (X, Z)
-FIN_POST_UB = (-174e-3, 127e-3)       # (X, Z)
+FIN_ANT_LB = (-100e-3, -45e-3)
+FIN_ANT_UB = (-100e-3, 45e-3)
+FIN_POST_LB = (-274e-3, -127e-3)      # (X, Z)
+FIN_POST_UB = (-274e-3, 127e-3)       # (X, Z)
+PENDUCLE_LB = -95e-3
+PENDUCLE_UB = 70e-3
 RAY_NUM = 6
 
 def load_mesh_vertices(mesh_path):
@@ -111,23 +113,25 @@ def find_min_x_at_z(verts, z0, z_tol=5e-3, y_weight=0.0):
 
 def get_fin_ctrl_vertices(verts, N=6):
     """
-    Get fin control vertices, size 2N+1
+    Get fin control vertices, size 2N + 2
+    (2N ray + penducle)
     
     :param verts: Vertex positions
     :param int: num of rays
     """
-    ctrl_idx = np.empty(N * 2 + 1)
+    ctrl_idx = np.empty(2 * N + 2, dtype=int)
 
-    z_penducle = np.linspace(PENDUCLE_Z_LB, PENDUCLE_Z_UB, N)    # penducle height
-    z_fin = np.linspace(FIN_POST_LB[1], FIN_POST_UB[1], N)       # fin posterior height
+    z_fin_ant = np.linspace(FIN_ANT_LB[1], FIN_ANT_UB[1], N)
+    z_fin_post = np.linspace(FIN_POST_LB[1], FIN_POST_UB[1], N)       # fin posterior height
     for i in range(N):
-        ctrl_idx[i], _ = find_closest_vertex(verts, [0, 0, z_penducle[i]])
-        ctrl_idx[N + i], _ = find_min_x_at_z(verts, z_fin[i])
+        ctrl_idx[i], _ = find_closest_vertex(verts, [FIN_ANT_LB[0], 0, z_fin_ant[i]])
+        ctrl_idx[i + N], _ = find_min_x_at_z(verts, z_fin_post[i])
     
-    # frontmost vertex
-    ctrl_idx[-1] = np.argmax(verts[:, 0])
+    # penducle vertices
+    ctrl_idx[-2], _ = find_closest_vertex(verts, [0, 0, PENDUCLE_LB])
+    ctrl_idx[-1], _ = find_closest_vertex(verts, [0, 0, PENDUCLE_UB])
 
-    return ctrl_idx.astype(int)
+    return ctrl_idx
 
 
 def find_vertices_on_xz_segment(verts, p0, p1, dist_tol):
@@ -188,7 +192,7 @@ def get_fin_ray_regions(verts, ctrl_idx, dist_tol=1e-2):
 def make_config(config_path: str, output_path: str):
     config = {
         "dimension": 3,
-        "fluid_viscosity": 0.02,
+        "fluid_viscosity": 0.002,
         "fluid_density": 500.0,
         "fluid_nx": NX,
         "fluid_ny": NY,
@@ -250,7 +254,7 @@ def make_config(config_path: str, output_path: str):
 
     stiffness_per_node = [
         1e7 if i in ray_set else
-        .5e6 if verts[i, 0] < 0.02 else
+        .5e6 if verts[i, 0] < FIN_ANT_LB[0] else
         1e6
         for i in range(len(verts))
     ]
@@ -265,7 +269,7 @@ def make_config(config_path: str, output_path: str):
         "translate": [0.25 * nx * dx, 0.5 * ny * dx, 0.5 * nz * dx],
         "scale": [1., 1., 1.],
         "lbs_control_config": {
-            "cnum": RAY_NUM * 2 + 1,
+            "cnum": RAY_NUM * 2 + 2,
             "omega": 0.3,
             "stiffness": 10.0,
             "ctrl_idx": ctrl_idx.tolist()
@@ -376,16 +380,20 @@ def run_test():
         if i % 4 == 0:  
             pos = np.array(simulator.getVertices())
             x = pos.mean(axis=0)
-            print(f"Step {i} mean x {x}")
+            vel = np.asarray(simulator.getVelocity())
+            max_vel = np.max(np.linalg.norm(vel, axis=1))
+            print(f"Step {i} mean x {x} max v {max_vel}")
+            if max_vel > 10:
+                break 
             # angle = np.sin(2 * np.pi * i / 200) * np.pi / 4   # flat motion
             angles = [np.sin(2 * np.pi * (i / 200 + j / (RAY_NUM * 4))) * np.pi / 4 for j in range(RAY_NUM)]    # undulation
             heave = np.sin(2 * np.pi * i / 200) * 1e-2
-            shift = np.zeros((RAY_NUM * 2 + 1, 3))
+            shift = np.zeros((RAY_NUM * 2 + 2, 3))
             shift[:RAY_NUM, 1] = heave
             rotation = np.array(
-                [np.eye(3)] * RAY_NUM +
+                [np.eye(3)] * RAY_NUM + 
                 [rotation_matrix(axis, -angles[j]) for j in range(RAY_NUM)] +
-                [np.eye(3)]
+                [np.eye(3)] * 2
             )
             simulator.apply_lbs_control(0, shift, rotation)
         simulator.step()

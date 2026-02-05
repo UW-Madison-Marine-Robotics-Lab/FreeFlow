@@ -61,7 +61,7 @@ def arg_parser():
     parser.add_argument('--gpus', dest='gpus', default='0')
     parser.add_argument('--checkpoint', dest='checkpoint',
                         action='store_true', default=False)
-    parser.add_argument('--cfg_path', type=str, default='./config.json')
+    parser.add_argument('--cfg_path', type=str, default='./task.json')
 
     return parser.parse_args()
 
@@ -107,8 +107,9 @@ def main():
     hidden_dim = cfg['hidden_dim']
     explore_steps = cfg['explore_steps']
     rewards = []
-    action_dim = cfg['action_size']
+    ray_num = cfg['ray_num']
     dim = cfg['dim']
+    action_dim = (3 if dim == 2 else 6 if dim == 3 else None) * (2 * ray_num + 2)
     env_type = cfg['env_type']
     if env_type == 'LBS':
         Env = LBSEnv
@@ -150,6 +151,11 @@ def main():
 
         print("Running traning on {} processes".format(num_workers))
         processes = []
+
+        # Log file
+        log_path = os.path.join(out_dir, "training.log")
+        with open(log_path, "w"):
+            pass
 
         for i in range(num_workers):
             idx = int(gpu_list[i])
@@ -209,6 +215,11 @@ def main():
                 # action = np.zeros(action_dim)
 
                 next_state, reward, done, info = env.step(action)
+
+                # print position
+                pos = np.asarray(env.simulator.getVertices())
+                x = pos.mean(axis=0)
+                print(f"Step {step} mean x {x}")
 
                 if done:
                     break

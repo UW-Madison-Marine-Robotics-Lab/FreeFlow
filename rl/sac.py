@@ -22,6 +22,16 @@
 # The modifications are provided under the terms of the license of this project.
 # --------------------------------------------------------------------------------
 
+# --------------------------------------------------------------------------------
+# Modifications Copyright 2026 Jiayi Jin
+#
+# This file has been significantly modified from its original version in
+# the Popular-RL-Algorithms library. The original license and copyright
+# notices are retained above.
+#
+# The modifications are provided under the terms of the license of this project.
+# --------------------------------------------------------------------------------
+
 import math
 import random
 import os
@@ -524,8 +534,15 @@ def sac_worker(id, sac_trainer, Env, cfg_path, rewards_queue, reward_buffer, rep
                 # print("done.")
                 break
 
-        print('Worker: ', id, '| Episode: ', eps, '| Episode Reward: ',
-              episode_reward, '| Episode Energy: ', episode_energy)
+        log_path = os.path.join(model_path, "training.log")
+        msg = (
+            f"Worker: {id} | Episode: {eps} | "
+            f"Episode Reward: {episode_reward} | "
+            f"Episode Energy: {episode_energy}"
+        )
+        print(msg)
+        with open(log_path, "a") as f:
+            f.write(msg + "\n")
 
         rewards_queue.put(episode_reward)
 
