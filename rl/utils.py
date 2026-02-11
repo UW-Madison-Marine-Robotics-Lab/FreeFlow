@@ -253,23 +253,26 @@ def find_min_x_at_z(verts, z0, z_tol=5e-3, y_weight=0.0):
 
 def get_fin_ctrl_vertices(verts, N=6):
     """
-    Get fin control vertices, size 2N + 2
-    (2N ray + penducle)
+    Get fin control vertices, size N + 4
+    (N ray + penducle * 2 + fixed * 2)
     
     :param verts: Vertex positions
     :param int: num of rays
     """
-    ctrl_idx = np.empty(2 * N + 2, dtype=int)
+    ctrl_idx = np.empty(N + 2, dtype=int)
 
-    z_fin_ant = np.linspace(FIN_ANT_LB[1], FIN_ANT_UB[1], N)
+    # z_fin_ant = np.linspace(FIN_ANT_LB[1], FIN_ANT_UB[1], N)
     z_fin_post = np.linspace(FIN_POST_LB[1], FIN_POST_UB[1], N)       # fin posterior height
     for i in range(N):
-        ctrl_idx[i], _ = find_closest_vertex(verts, [FIN_ANT_LB[0], 0, z_fin_ant[i]])
-        ctrl_idx[i + N], _ = find_min_x_at_z(verts, z_fin_post[i])
+        # ctrl_idx[i], _ = find_closest_vertex(verts, [FIN_ANT_LB[0], 0, z_fin_ant[i]])
+        ctrl_idx[i], _ = find_min_x_at_z(verts, z_fin_post[i])
     
-    # penducle vertices
-    ctrl_idx[-2], _ = find_closest_vertex(verts, [0, 0, PENDUCLE_LB])
-    ctrl_idx[-1], _ = find_closest_vertex(verts, [0, 0, PENDUCLE_UB])
+    ctrl_idx[-2],_ = find_closest_vertex(verts, [FIN_ANT_LB[0], 0, FIN_ANT_LB[1]])
+    ctrl_idx[-1],_ = find_closest_vertex(verts, [FIN_ANT_UB[0], 0, FIN_ANT_UB[1]])
+    
+    # # penducle vertices
+    # ctrl_idx[-2], _ = find_closest_vertex(verts, [0, 0, PENDUCLE_LB])
+    # ctrl_idx[-1], _ = find_closest_vertex(verts, [0, 0, PENDUCLE_UB])
 
     return ctrl_idx
 
@@ -318,12 +321,16 @@ def get_fin_ray_regions(verts, ctrl_idx, dist_tol=1e-2):
         (half the width)
     """
 
-    N = (len(ctrl_idx) - 1) // 2
+    # N = (len(ctrl_idx) - 1) // 2
+    N = len(ctrl_idx) - 2
     ray_regions = [np.empty(0) for _ in range(N)]
 
+    z_fin_ant = np.linspace(FIN_ANT_LB[1], FIN_ANT_UB[1], N)
+
     for i in range(N):
-        p0 = (verts[ctrl_idx[i], 0], verts[ctrl_idx[i], 2])
-        p1 = (verts[ctrl_idx[i + N], 0], verts[ctrl_idx[i + N], 2])
+        # p0 = (verts[ctrl_idx[i], 0], verts[ctrl_idx[i], 2])
+        p0 = (FIN_ANT_LB[0], z_fin_ant[i])
+        p1 = (verts[ctrl_idx[i], 0], verts[ctrl_idx[i], 2])
         ray_regions[i] = find_vertices_on_xz_segment(verts, p0, p1, dist_tol)
     
     return ray_regions

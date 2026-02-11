@@ -7,6 +7,7 @@
 import argparse
 import json
 from pathlib import Path
+import math
 import numpy as np
 from utils import load_mesh_vertices, get_fin_ctrl_vertices, expand_action_range, eulerAnglesToRotationMatrix3D
 import matplotlib.pyplot as plt
@@ -19,8 +20,14 @@ parser.add_argument(
     '--cfg_path', type=str, 
     default='./task.json',
     help="Config for RL task")
+parser.add_argument('--t_start', type=float, default=0.0, help="Start time")
+parser.add_argument('--t_end', type=float, default=10.0, help="End time")
+parser.add_argument('--plot_tip', type=bool, default=False, help="Plot fin tip trajectories")
 args, _ = parser.parse_known_args()
 cfg_path = args.cfg_path
+t_start = args.t_start
+t_end = args.t_end
+plot_tip = args.plot_tip
 
 
 # -------- read config --------
@@ -33,7 +40,7 @@ out_dir = Path(__file__).parent.parent / "output" / \
 out_dir = str(out_dir)
 
 ray_num = int(cfg['ray_num'])
-cnum = 2 * ray_num + 2
+cnum = ray_num + 4
 action_size = (3 if dim == 2 else 6 if dim == 3 else None) * cnum
 
 ctrl_dt = cfg["interval"]
@@ -69,12 +76,15 @@ action_range[-2 * (n_trans + n_rot):] = 0
 # -------- read control sequence -------- 
 action_rec = np.load(out_dir + "/action_record.npy")
 
+step_start = math.floor(t_start / ctrl_dt)
+step_end = math.floor(t_end / ctrl_dt)
+
 shift = np.zeros((cnum, dim))
 rotation = np.zeros(
     (cnum, 3, 3)) if dim == 3 else np.zeros((cnum))
 ctrl_pos = np.zeros_like(ctrl_pos0)
 ctrl_pos_history = []
-for step in range(len(action_rec)):
+for step in range(step_start, step_end):
     # process action
     actions = action_rec[step] * action_range
     for i in range(cnum):
@@ -93,49 +103,105 @@ for step in range(len(action_rec)):
     
     ctrl_pos_history.append(ctrl_pos.copy())
     
-    # # plot fin tip
-    # yz = ctrl_pos[ray_num: 2 * ray_num, 1:3]
-    # y = yz[:, 0]
-    # z = yz[:, 1]
-    # tck, u = splprep([y, z], s=0.0, k=min(3, len(y)-1))  # s=0 => interpolate points
-    # u_fine = np.linspace(0, 1, 100)
-    # y_s, z_s = splev(u_fine, tck)
+    # plot fin tip
+    if plot_tip:
+        yz = ctrl_pos[ray_num: 2 * ray_num, 1:3]
+        y = yz[:, 0]
+        z = yz[:, 1]
+        tck, u = splprep([y, z], s=0.0, k=min(3, len(y)-1))  # s=0 => interpolate points
+        u_fine = np.linspace(0, 1, 100)
+        y_s, z_s = splev(u_fine, tck)
 
-    # plt.plot(y_s, z_s, linewidth=1, alpha=0.35, label=f"step {step}")
-    # plt.scatter(y, z, s=8, alpha=0.35)
-    # # plt.plot(y, z, marker="o", linewidth=1, markersize=2, alpha=0.35, label=f"step {step}")
+        plt.plot(y_s, z_s, linewidth=1, alpha=0.35, label=f"step {step}")
+        plt.scatter(y, z, s=8, alpha=0.35)
+        # plt.plot(y, z, marker="o", linewidth=1, markersize=2, alpha=0.35, label=f"step {step}")
 
 
-# plt.legend(
-#     fontsize=8,
-#     loc="best",
-#     ncol=2,          # helps when many steps
-#     frameon=False
-# )
-# plt.axis("equal")  # optional, helps interpret geometry
-# plt.tight_layout()
-# plt.show()
+if plot_tip:
+    plt.legend(fontsize=8, loc="best",
+        ncol=2,          # helps when many steps
+        frameon=True
+    )
+    plt.axis("equal")  # optional, helps interpret geometry
+    plt.tight_layout()
+    plt.show()
 
 time = np.arange(len(ctrl_pos_history)) * ctrl_dt
 u = time / time[-1]   # normalize parameter to [0, 1]
 u_fine = np.linspace(0, 1, 5 * len(time))
 
-for i in range(ray_num, 2 * ray_num):
-    y_traj = np.array([ctrl_pos_history[t][i, 1] for t in range(len(ctrl_pos_history))])
 
-    # k must be < number of points
-    k = min(3, len(time) - 1)
+# plot control inputs
+def plot_spline_component(ax, i_range, comp_idx, title, ylabel):
+    for i in i_range:
+        traj = np.array([ctrl_pos_history[t][i, comp_idx] for t in range(len(ctrl_pos_history))])
 
-    # parametric spline: y(u)
-    tck, _ = splprep([y_traj], u=u, s=0.0, k=k)
-    y_smooth = splev(u_fine, tck)[0]
+        k = min(3, len(time) - 1)  # must be < #points
+        tck, _ = splprep([traj], u=u, s=0.0, k=k)
+        traj_smooth = splev(u_fine, tck)[0]
 
-    time_smooth = np.interp(u_fine, u, time)
+        ax.plot(time_smooth, traj_smooth, linewidth=1.5, alpha=0.5, label=f"cp {i}")
 
-    plt.plot(time_smooth, y_smooth, linewidth=1.5, alpha=0.5, label=f"cp {i}")
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    # ax.grid(True, alpha=0.25)
 
-plt.xlabel("time (s)")
-plt.ylabel("y position")
-plt.legend(fontsize=8, ncol=1, frameon=True, loc='best')
+time_smooth = np.interp(u_fine, u, time) + t_start  # reuse for all curves
+fig, axs = plt.subplots(2, 2, figsize=(12, 8), sharex=True)
+
+def plot_spline_component(ax, i_range, comp_idx, title, ylabel):
+    for i in i_range:
+        traj = np.array([ctrl_pos_history[t][i, comp_idx] for t in range(len(ctrl_pos_history))])
+
+        k = min(3, len(time) - 1)  # must be < #points
+        tck, _ = splprep([traj], u=u, s=0.0, k=k)
+        traj_smooth = splev(u_fine, tck)[0]
+
+        ax.plot(time_smooth, traj_smooth, linewidth=1.5, alpha=0.5, label=f"cp {i}")
+
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    ax.grid(True, alpha=0.25)
+
+
+# Row 1: i in range(ray_num)
+plot_spline_component(
+    axs[0, 0],
+    range(ray_num),
+    comp_idx=1,  # y
+    title="Penducle y(t)",
+    ylabel="y"
+)
+plot_spline_component(
+    axs[0, 1],
+    range(ray_num),
+    comp_idx=2,  # z
+    title="Penducle z(t)",
+    ylabel="z"
+)
+
+# Row 2: i in range(ray_num, ray_num + 2)
+plot_spline_component(
+    axs[1, 0],
+    range(ray_num, ray_num + 2),
+    comp_idx=1,  # y
+    title="Fin tip y(t)",
+    ylabel="y"
+)
+plot_spline_component(
+    axs[1, 1],
+    range(ray_num, ray_num + 2),
+    comp_idx=2,  # z
+    title="Fin tip z(t)",
+    ylabel="z"
+)
+
+for ax in axs[1, :]:
+    ax.set_xlabel("time (s)")
+
+# Legends: per-axes (can be crowded). If too crowded, comment these out.
+for ax in axs.ravel():
+    ax.legend(fontsize=8, ncol=1, frameon=True, loc="best")
+
 plt.tight_layout()
 plt.show()

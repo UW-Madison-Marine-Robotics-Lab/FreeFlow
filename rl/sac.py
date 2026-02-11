@@ -550,7 +550,10 @@ def sac_worker(id, sac_trainer, Env, cfg_path, rewards_queue, reward_buffer, rep
             success = reward_buffer.update(episode_reward)
             if success:
                 sac_trainer.save_model(model_path + "/lbmsac_best")
-                print("Model saved at episode: ", eps, "Worker: ", id)
+                save_model_msg = f"Model saved at episode: {eps}, Worker: {id}"
+                print(save_model_msg)
+                with open(log_path, "a") as f:
+                    f.write(save_model_msg + "\n")
             sac_trainer.save_model(model_path + "/lbmsac_latest")
 
 

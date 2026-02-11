@@ -113,23 +113,26 @@ def find_min_x_at_z(verts, z0, z_tol=5e-3, y_weight=0.0):
 
 def get_fin_ctrl_vertices(verts, N=6):
     """
-    Get fin control vertices, size 2N + 2
-    (2N ray + penducle)
+    Get fin control vertices, size N + 4
+    (N ray + penducle * 2 + fixed * 2)
     
     :param verts: Vertex positions
     :param int: num of rays
     """
-    ctrl_idx = np.empty(2 * N + 2, dtype=int)
+    ctrl_idx = np.empty(N + 2, dtype=int)
 
-    z_fin_ant = np.linspace(FIN_ANT_LB[1], FIN_ANT_UB[1], N)
+    # z_fin_ant = np.linspace(FIN_ANT_LB[1], FIN_ANT_UB[1], N)
     z_fin_post = np.linspace(FIN_POST_LB[1], FIN_POST_UB[1], N)       # fin posterior height
     for i in range(N):
-        ctrl_idx[i], _ = find_closest_vertex(verts, [FIN_ANT_LB[0], 0, z_fin_ant[i]])
-        ctrl_idx[i + N], _ = find_min_x_at_z(verts, z_fin_post[i])
+        # ctrl_idx[i], _ = find_closest_vertex(verts, [FIN_ANT_LB[0], 0, z_fin_ant[i]])
+        ctrl_idx[i], _ = find_min_x_at_z(verts, z_fin_post[i])
     
-    # penducle vertices
-    ctrl_idx[-2], _ = find_closest_vertex(verts, [0, 0, PENDUCLE_LB])
-    ctrl_idx[-1], _ = find_closest_vertex(verts, [0, 0, PENDUCLE_UB])
+    ctrl_idx[-2],_ = find_closest_vertex(verts, [FIN_ANT_LB[0], 0, FIN_ANT_LB[1]])
+    ctrl_idx[-1],_ = find_closest_vertex(verts, [FIN_ANT_UB[0], 0, FIN_ANT_UB[1]])
+    
+    # # penducle vertices
+    # ctrl_idx[-2], _ = find_closest_vertex(verts, [0, 0, PENDUCLE_LB])
+    # ctrl_idx[-1], _ = find_closest_vertex(verts, [0, 0, PENDUCLE_UB])
 
     return ctrl_idx
 
@@ -178,12 +181,16 @@ def get_fin_ray_regions(verts, ctrl_idx, dist_tol=1e-2):
         (half the width)
     """
 
-    N = (len(ctrl_idx) - 1) // 2
+    # N = (len(ctrl_idx) - 1) // 2
+    N = len(ctrl_idx) - 2
     ray_regions = [np.empty(0) for _ in range(N)]
 
+    z_fin_ant = np.linspace(FIN_ANT_LB[1], FIN_ANT_UB[1], N)
+
     for i in range(N):
-        p0 = (verts[ctrl_idx[i], 0], verts[ctrl_idx[i], 2])
-        p1 = (verts[ctrl_idx[i + N], 0], verts[ctrl_idx[i + N], 2])
+        # p0 = (verts[ctrl_idx[i], 0], verts[ctrl_idx[i], 2])
+        p0 = (FIN_ANT_LB[0], z_fin_ant[i])
+        p1 = (verts[ctrl_idx[i], 0], verts[ctrl_idx[i], 2])
         ray_regions[i] = find_vertices_on_xz_segment(verts, p0, p1, dist_tol)
     
     return ray_regions
@@ -207,16 +214,16 @@ def make_config(config_path: str, output_path: str):
         "log_file": "simulation_3d.log",
         "global_fem_options": {
             "optimizer_type": "newton",
-            "iterations": 40,
+            "iterations": 50,
             "verbose_level": 1,
             "line_search_method": "backtracking",
             "force_density_abs_tol": 1e-2,
-            "ls_max_iter": 20,
+            "ls_max_iter": 50,
             "ls_beta": 0.3,
             "ls_alpha": 1e-4,
             "linear_solver_type": "cholmod_ldlt",
             "grad_check": False,
-            "substeps": 3,
+            "substeps": 4,
             "vbd_iterations": 30,
             "omega": 0.8
         },
@@ -269,7 +276,7 @@ def make_config(config_path: str, output_path: str):
         "translate": [0.25 * nx * dx, 0.5 * ny * dx, 0.5 * nz * dx],
         "scale": [1., 1., 1.],
         "lbs_control_config": {
-            "cnum": RAY_NUM * 2 + 2,
+            "cnum": RAY_NUM + 2,
             "omega": 0.3,
             "stiffness": 10.0,
             "ctrl_idx": ctrl_idx.tolist()
@@ -377,7 +384,7 @@ def run_test():
     simulator.begin_profiler("3d bluegill sunfish actuated by lbs control")
     axis = np.array([0.0, 0.0, 1.0])
     for i in range(2000):
-        if i % 4 == 0:  
+        if i % 10 == 0:  
             pos = np.array(simulator.getVertices())
             x = pos.mean(axis=0)
             vel = np.asarray(simulator.getVelocity())
@@ -385,14 +392,13 @@ def run_test():
             print(f"Step {i} mean x {x} max v {max_vel}")
             if max_vel > 10:
                 break 
-            # angle = np.sin(2 * np.pi * i / 200) * np.pi / 4   # flat motion
-            angles = [np.sin(2 * np.pi * (i / 200 + j / (RAY_NUM * 4))) * np.pi / 4 for j in range(RAY_NUM)]    # undulation
-            heave = np.sin(2 * np.pi * i / 200) * 1e-2
-            shift = np.zeros((RAY_NUM * 2 + 2, 3))
-            shift[:RAY_NUM, 1] = heave
+            angle = np.sin(2 * np.pi * i / 100) * 0.5   # flat motion
+            # angles = [np.sin(2 * np.pi * (i / 100 + 0 / (RAY_NUM * 4))) * 0.5 for j in range(RAY_NUM)]    # undulation
+            heave = np.sin(2 * np.pi * i / 100) * 1e-2
+            shift = np.zeros((RAY_NUM + 2, 3))
+            shift[RAY_NUM: RAY_NUM + 2, 1] = heave
             rotation = np.array(
-                [np.eye(3)] * RAY_NUM + 
-                [rotation_matrix(axis, -angles[j]) for j in range(RAY_NUM)] +
+                [rotation_matrix(axis, -angle) for j in range(RAY_NUM)] +
                 [np.eye(3)] * 2
             )
             simulator.apply_lbs_control(0, shift, rotation)

@@ -43,7 +43,7 @@ class BaseEnv(ABC):
 
         self.config_path = self.data_dir / "config.json"        
         self.ray_num = self.cfg['ray_num']
-        self.action_size = (3 if self.dim == 2 else 6 if self.dim == 3 else None) * (2 * self.ray_num + 2)
+        self.action_size = (3 if self.dim == 2 else 6 if self.dim == 3 else None) * (self.ray_num + 2)
         # if not self.config_path.exists():
         lock_path = str(self.config_path) + ".lock"
         lock = FileLock(lock_path)
@@ -77,6 +77,7 @@ class BaseEnv(ABC):
         self.r_smooth = self.cfg["r_smooth"]
         self.r_reg = self.cfg["r_reg"]
         self.r_energy = self.cfg["r_energy"]
+        self.r_lateral = self.cfg["r_lateral"]
         self.interval = self.cfg["interval"]
         self.itrnum_per_step = int(self.interval / self.dt)
 
@@ -92,8 +93,8 @@ class BaseEnv(ABC):
         self.sample_points_origin -= self.center_origin[np.newaxis, :]
 
         self.generate_target()
-        self.distance_to_target = np.linalg.norm(
-            self.target - self.center_origin)
+        self.distance_to_target_vec = self.target - self.center_origin
+        self.distance_to_target = np.linalg.norm(self.distance_to_target_vec)
         self.last_actions = np.zeros(self.action_size)
         self.numofframe = 0
         self.diverge_punish = -0.2
@@ -144,8 +145,8 @@ class BaseEnv(ABC):
 
     def reset(self):
         self.simulator.reset()
-        self.distance_to_target = np.linalg.norm(
-            self.target - self.center_origin)
+        self.distance_to_target_vec = self.target - self.center_origin
+        self.distance_to_target = np.linalg.norm(self.distance_to_target_vec)
         self.last_actions = np.zeros(self.action_size)
         self.numofframe = 0
         state, _ = self.get_state()
@@ -155,10 +156,10 @@ class BaseEnv(ABC):
         if self.task_type == "forward":
             if self.dim == 2:
                 self.target = np.array(
-                    [self.nx * self.dx * 0.9, self.ny * self.dx / 2])
+                    [self.nx * self.dx * 0.8, self.ny * self.dx / 2])
             else:
                 self.target = np.array(
-                    [self.nx * self.dx * 0.9, self.ny * self.dx / 2, self.nz * self.dx / 2])
+                    [self.nx * self.dx * 0.8, self.ny * self.dx / 2, self.nz * self.dx / 2])
         elif self.task_type == "chasing":
             l = random.uniform(1.5, 2.0)
             theta = random.uniform(-np.pi / 8, np.pi / 8)
@@ -280,20 +281,33 @@ class BaseEnv(ABC):
         return state, done
 
     def get_reward(self):
-        distance_to_target = np.linalg.norm(self.target - self.t)
+        dist_to_target_vec = self.target - self.t 
+        distance_to_target = np.linalg.norm(dist_to_target_vec)
         fish_vel_towards_target = (
             self.distance_to_target - distance_to_target) / self.interval
+        
+        if distance_to_target > 1e-12:
+            d_hat = dist_to_target_vec / distance_to_target
+            v = (self.distance_to_target_vec - dist_to_target_vec) / self.interval
+            v_perp = v - np.dot(v, d_hat) * d_hat
+            v_perp_norm = np.linalg.norm(v_perp)
+        else:
+            v_perp_norm = 0.0
+        
         action_distance2 = np.mean((self.actions - self.last_actions) ** 2)
         action_squared_mean = np.mean(self.actions ** 2)
+
         reward = 1.0 * fish_vel_towards_target \
             - self.r_smooth * action_distance2 \
             - self.r_reg * action_squared_mean \
-            - self.r_energy * self.step_energy
+            - self.r_energy * self.step_energy \
+            - self.r_lateral * v_perp_norm
 
         alive_bonus = 0.01
         if self.task_type == "flow_resistance":
             reward += alive_bonus
 
+        self.distance_to_target_vec = dist_to_target_vec
         self.distance_to_target = distance_to_target
 
         info = {
@@ -301,7 +315,8 @@ class BaseEnv(ABC):
             "action_distance2": action_distance2,
             "action_squared_mean": action_squared_mean,
             "distance_to_target": self.distance_to_target,
-            "step_energy": self.step_energy
+            "step_energy": self.step_energy,
+            "v_perp_norm": v_perp_norm,
         }
 
         # print("reward: ", fish_vel_towards_target, "reward_0: ", self.reward_1 * action_distance2, "reward_1: ", self.reward_2 * action_squared_mean)
@@ -381,8 +396,9 @@ class LBSEnv(BaseEnv):
                 self.action_range[i] = trans_range[j]
             else:
                 self.action_range[i] = rot_range[j - n_trans]
-            
-        self.action_range[-2 * (n_trans + n_rot):] = 0
+
+        # # fixed points            
+        # self.action_range[-2 * (n_trans + n_rot):] = 0
 
         self.shift = np.zeros((self.cnum, self.dim))
         self.rotation = np.zeros(

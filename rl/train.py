@@ -36,6 +36,7 @@ import numpy as np
 import os
 import json
 from pathlib import Path
+import matplotlib
 import matplotlib.pyplot as plt
 import argparse
 from env import LBSEnv, KMeansEnv
@@ -49,6 +50,8 @@ from utils import create_folder
 import torch
 
 torch.multiprocessing.set_start_method('forkserver', force=True)
+
+matplotlib.use("agg")
 
 
 def arg_parser():
@@ -109,7 +112,7 @@ def main():
     rewards = []
     ray_num = cfg['ray_num']
     dim = cfg['dim']
-    action_dim = (3 if dim == 2 else 6 if dim == 3 else None) * (2 * ray_num + 2)
+    action_dim = (3 if dim == 2 else 6 if dim == 3 else None) * (ray_num + 2)
     env_type = cfg['env_type']
     if env_type == 'LBS':
         Env = LBSEnv
@@ -190,8 +193,8 @@ def main():
     if args.test:
         import time
         # try:
-        sac_trainer.load_model(out_dir + "/lbmsac_latest")
-        # sac_trainer.load_model(out_dir + "/lbmsac_best")
+        # sac_trainer.load_model(out_dir + "/lbmsac_latest")
+        sac_trainer.load_model(out_dir + "/lbmsac_best")
         
         # except:
         #     print("No model found, please train the model first.", out_dir + "/lbmsac_best")
@@ -239,7 +242,7 @@ def main():
                   episode_reward, '| Episode Energy: ', episode_energy)
             reward_record.append(episode_reward * interval)
             energy_record.append(episode_energy)
-            # np.save(out_dir + "/action_record.npy", np.array(action_record))
+            np.save(out_dir + "/action_record.npy", np.array(action_record))
 
         reward_record = np.array(reward_record)
         energy_record = np.array(energy_record)
