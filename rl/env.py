@@ -412,6 +412,7 @@ class LBSEnv(BaseEnv):
         elif self.dim == 3:
             assert self.action_size % 6 == 0, "action_size should be divisible by 6 for 3D LBS."
             self.cnum = self.action_size // 6
+        self.cnum += 2
         
         # lbs control config
         self.config["solids"][0]["lbs_control_config"]["cnum"] = self.cnum
@@ -440,7 +441,7 @@ class LBSEnv(BaseEnv):
 
     def process_action(self, action):
         self.actions = action.copy() * self.action_range
-        for i in range(self.cnum):
+        for i in range(self.cnum - 2):
             if self.dim == 2:
                 self.shift[i] = self.actions[3*i:3*i+2]
                 self.rotation[i] = self.actions[3*i+2]
@@ -448,16 +449,20 @@ class LBSEnv(BaseEnv):
                 self.shift[i] = self.actions[6*i:6*i+3]
                 self.rotation[i] = eulerAnglesToRotationMatrix3D(
                     self.actions[6*i+3:6*(i+1)])
+        
+        if self.dim == 3:
+            self.rotation[-2] = np.eye(3)
+            self.rotation[-1] = np.eye(3)
 
         self.simulator.apply_lbs_control(0, self.shift, self.rotation)
 
     @staticmethod
     def get_state_dim(dim, action_dim):
         if dim == 2:
-            cnum = action_dim // 3
+            cnum = action_dim // 3 + 2
             return 4 * cnum + 2 + 2 + 1 + action_dim
         elif dim == 3:
-            cnum = action_dim // 6
+            cnum = action_dim // 6 + 2
             return 6 * cnum + 3 + 3 + 1 + action_dim
 
 

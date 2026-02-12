@@ -41,7 +41,7 @@ out_dir = str(out_dir)
 
 ray_num = int(cfg['ray_num'])
 cnum = ray_num + 4
-action_size = (3 if dim == 2 else 6 if dim == 3 else None) * cnum
+action_size = (3 if dim == 2 else 6 if dim == 3 else None) * (cnum - 2)
 
 ctrl_dt = cfg["interval"]
 
@@ -71,7 +71,7 @@ for i in range(action_size):
         action_range[i] = trans_range[j]
     else:
         action_range[i] = rot_range[j - n_trans]
-action_range[-2 * (n_trans + n_rot):] = 0
+# action_range[-2 * (n_trans + n_rot):] = 0
 
 # -------- read control sequence -------- 
 action_rec = np.load(out_dir + "/action_record.npy")
@@ -89,16 +89,16 @@ for step in range(step_start, step_end):
     actions = action_rec[step] * action_range
     for i in range(cnum):
         if dim == 2:
-            shift[i] = actions[3*i:3*i+2]
-            rotation[i] = actions[3*i+2]
+            shift[i] = actions[3*i:3*i+2] if i < cnum - 2 else np.zeros((1,2))
+            rotation[i] = actions[3*i+2] if i < cnum - 2 else 0.
             Rmat = np.asarray([
                 [np.cos(rotation[i]), -np.sin(rotation[i])],
                 [np.sin(rotation[i]),  np.cos(rotation[i])]
             ])
             ctrl_pos[i] = ctrl_pos0[i] @ Rmat.T + shift[i]
         else:
-            shift[i] = actions[6*i:6*i+3]
-            rotation[i] = eulerAnglesToRotationMatrix3D(actions[6*i+3:6*(i+1)])
+            shift[i] = actions[6*i:6*i+3] if i < cnum - 2 else np.zeros((1,3))
+            rotation[i] = eulerAnglesToRotationMatrix3D(actions[6*i+3:6*(i+1)]) if i < cnum - 2 else np.eye(3)
             ctrl_pos[i] = ctrl_pos0[i] @ rotation[i].T + shift[i]
     
     ctrl_pos_history.append(ctrl_pos.copy())

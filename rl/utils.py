@@ -259,7 +259,7 @@ def get_fin_ctrl_vertices(verts, N=6):
     :param verts: Vertex positions
     :param int: num of rays
     """
-    ctrl_idx = np.empty(N + 2, dtype=int)
+    ctrl_idx = np.empty(N + 4, dtype=int)
 
     # z_fin_ant = np.linspace(FIN_ANT_LB[1], FIN_ANT_UB[1], N)
     z_fin_post = np.linspace(FIN_POST_LB[1], FIN_POST_UB[1], N)       # fin posterior height
@@ -267,12 +267,12 @@ def get_fin_ctrl_vertices(verts, N=6):
         # ctrl_idx[i], _ = find_closest_vertex(verts, [FIN_ANT_LB[0], 0, z_fin_ant[i]])
         ctrl_idx[i], _ = find_min_x_at_z(verts, z_fin_post[i])
     
-    ctrl_idx[-2],_ = find_closest_vertex(verts, [FIN_ANT_LB[0], 0, FIN_ANT_LB[1]])
-    ctrl_idx[-1],_ = find_closest_vertex(verts, [FIN_ANT_UB[0], 0, FIN_ANT_UB[1]])
+    ctrl_idx[-4],_ = find_closest_vertex(verts, [FIN_ANT_LB[0], 0, FIN_ANT_LB[1]])
+    ctrl_idx[-3],_ = find_closest_vertex(verts, [FIN_ANT_UB[0], 0, FIN_ANT_UB[1]])
     
-    # # penducle vertices
-    # ctrl_idx[-2], _ = find_closest_vertex(verts, [0, 0, PENDUCLE_LB])
-    # ctrl_idx[-1], _ = find_closest_vertex(verts, [0, 0, PENDUCLE_UB])
+    # penducle vertices
+    ctrl_idx[-2], _ = find_closest_vertex(verts, [0, 0, PENDUCLE_LB])
+    ctrl_idx[-1], _ = find_closest_vertex(verts, [0, 0, PENDUCLE_UB])
 
     return ctrl_idx
 
@@ -322,7 +322,7 @@ def get_fin_ray_regions(verts, ctrl_idx, dist_tol=1e-2):
     """
 
     # N = (len(ctrl_idx) - 1) // 2
-    N = len(ctrl_idx) - 2
+    N = len(ctrl_idx) - 4
     ray_regions = [np.empty(0) for _ in range(N)]
 
     z_fin_ant = np.linspace(FIN_ANT_LB[1], FIN_ANT_UB[1], N)
