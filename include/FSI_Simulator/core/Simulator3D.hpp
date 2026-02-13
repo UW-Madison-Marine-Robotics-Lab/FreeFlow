@@ -59,6 +59,9 @@ public:
     std::vector<int> getControlPointIdx() {
         return m_solid_solver->getControlPointIdx();
     }
+    std::vector<int> getSamplePointIdx() {
+        return m_solid_solver->getSamplePointIdx();
+    }
     std::vector<unsigned int> getBoundaryPointIdx() {
         return m_solid_solver->getBoundaryPointIdx();
     }

@@ -273,6 +273,12 @@ namespace fsi
                     m_ctrl_verts_idx.push_back(cp[i] + vol_vertex_offset);
                 }
 
+                auto sp = mesh->getSamplePoint();
+                for (size_t i = 0; i < sp.size(); i++)
+                {
+                    m_sample_verts_idx.push_back(sp[i] + vol_vertex_offset);
+                }
+
                 // update offsets
                 vol_vertex_offset += mesh->getNumVertices();
                 surf_vertex_offset += local_s_to_v_map.size();
@@ -900,6 +906,12 @@ namespace fsi
                 for (size_t i = 0; i < cp.size(); i++)
                 {
                     m_ctrl_verts_idx.push_back(cp[i] + vol_vertex_offset);
+                }
+
+                auto sp = mesh->getSamplePoint();
+                for (size_t i = 0; i < sp.size(); i++)
+                {
+                    m_sample_verts_idx.push_back(sp[i] + vol_vertex_offset);
                 }
 
                 // update offsets

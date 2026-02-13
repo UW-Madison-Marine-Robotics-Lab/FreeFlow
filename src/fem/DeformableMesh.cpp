@@ -24,6 +24,7 @@
 #include <glm/gtx/euler_angles.hpp>
 #include <filesystem>
 #include <set>
+#include <stdexcept>
 
 namespace fsi
 {
@@ -85,12 +86,24 @@ namespace fsi
                 {
                     LOG_INFO("Use user-defined control points");
                     ctrl_idx = config.lbs_control_config.ctrl_idx;
+                    if (ctrl_idx.size() != static_cast<size_t>(cnum)) 
+                    {
+                        throw std::runtime_error(
+                            "Control point size mismatch: ctrl_idx.size()=" + std::to_string(ctrl_idx.size()) +
+                            " but cnum=" + std::to_string(cnum)
+                        );
+                    }
                     // compute lbs_dist
                     control::set_control_points(
                         getNumVertices(), h_initial_positions, h_tetrahedra,
                         ctrl_idx, lbs_dist,
                         config.lbs_control_config.lbs_distance_type
                     );
+                    control::farthest_point_sampling(
+                        getNumVertices(), h_initial_positions, h_tetrahedra,
+                        cnum, sample_idx, lbs_dist,
+                        config.lbs_control_config.lbs_distance_type,
+                        config.lbs_control_config.random_first);
                 }
                 else
                 {
@@ -100,6 +113,7 @@ namespace fsi
                         cnum, ctrl_idx, lbs_dist,
                         config.lbs_control_config.lbs_distance_type,
                         config.lbs_control_config.random_first);
+                    sample_idx = ctrl_idx;
                 }
 
                 CudaArray<real> d_lbs_dist(lbs_dist.size());
@@ -406,12 +420,25 @@ namespace fsi
                 if (config.lbs_control_config.use_user_ctrl_points())
                 {
                     ctrl_idx = config.lbs_control_config.ctrl_idx;
+                    if (ctrl_idx.size() != static_cast<size_t>(cnum)) 
+                    {
+                        throw std::runtime_error(
+                            "Control point size mismatch: ctrl_idx.size()=" + std::to_string(ctrl_idx.size()) +
+                            " but cnum=" + std::to_string(cnum)
+                        );
+                    }
                     // compute lbs_dist
                     control::set_control_points(
                         getNumVertices(), h_initial_positions, h_triangles,
                         ctrl_idx, lbs_dist,
                         config.lbs_control_config.lbs_distance_type
                     );
+                    // compute sample points
+                    control::farthest_point_sampling(
+                        getNumVertices(), h_initial_positions, h_triangles,
+                        cnum, sample_idx, lbs_dist,
+                        config.lbs_control_config.lbs_distance_type,
+                        config.lbs_control_config.random_first);
                 }
                 else 
                 {
@@ -420,6 +447,7 @@ namespace fsi
                         cnum, ctrl_idx, lbs_dist,
                         config.lbs_control_config.lbs_distance_type,
                         config.lbs_control_config.random_first);
+                    sample_idx = ctrl_idx;
                 }
 
                 CudaArray<real> d_lbs_dist(lbs_dist.size());
