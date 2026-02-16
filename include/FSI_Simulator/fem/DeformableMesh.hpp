@@ -62,7 +62,6 @@ namespace fsi
             int getNumTriangles() const { return static_cast<int>(h_triangles.size()) / 3; }
             int getNumControlPoint() const { return cnum; }
             std::vector<int> getControlPoint() const { return ctrl_idx; }
-            std::vector<int> getSamplePoint() const { return sample_idx; }
             bool use_per_node_modulus() const {return !m_youngs_modulus_per_node.empty();}
 
             // LBS control
@@ -83,7 +82,6 @@ namespace fsi
             vec3_t center;
             real m_lbs_stiffness;
             std::vector<int> ctrl_idx;
-            std::vector<int> sample_idx;
             CudaArray<vec3_t> d_initial_positions;
             CudaArray<vec3_t> d_lbs_shift;
             CudaArray<mat3_t> d_lbs_rotation;
@@ -126,7 +124,6 @@ namespace fsi
             int getNumEdges() const { return static_cast<int>(h_edges.size()) / 2; }
             int getNumControlPoint() const { return cnum; }
             std::vector<int> getControlPoint() const { return ctrl_idx; }
-            std::vector<int> getSamplePoint() const { return sample_idx; }
             bool use_per_node_modulus() const {return !m_youngs_modulus_per_node.empty();}
 
             void applyLBSControl(const std::vector<vec2_t> &lbs_shift, const std::vector<real> &lbs_rotation, CudaArray<vec2_t> &lbs_position, int offset, cudaStream_t stream = nullptr);
@@ -140,7 +137,6 @@ namespace fsi
             vec2_t center;
             real m_lbs_stiffness;
             std::vector<int> ctrl_idx;
-            std::vector<int> sample_idx;
             CudaArray<vec2_t> d_initial_positions;
             CudaArray<vec2_t> d_lbs_shift;
             CudaArray<real> d_lbs_rotation;

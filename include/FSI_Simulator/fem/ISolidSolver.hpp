@@ -103,11 +103,6 @@ namespace fsi
                 ASSERT(m_scene, "Solver not initialized.");
                 return m_scene->getControlPointIdx();
             }
-            virtual std::vector<int> getSamplePointIdx() const 
-            {
-                ASSERT(m_scene, "Solver not initialized.");
-                return m_scene->getSamplePointIdx();
-            }
 
             // apply fluid forces to solid
             virtual void applyForces() = 0;
@@ -222,11 +217,6 @@ namespace fsi
             {
                 ASSERT(m_scene, "Solver not initialized.");
                 return m_scene->getControlPointIdx();
-            }
-            virtual std::vector<int> getSamplePointIdx() const 
-            {
-                ASSERT(m_scene, "Solver not initialized.");
-                return m_scene->getSamplePointIdx();
             }
 
             virtual void applyForces() = 0;

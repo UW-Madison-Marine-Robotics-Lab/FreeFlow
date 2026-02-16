@@ -59,7 +59,6 @@ namespace fsi
             size_t getTotalTriangles() const { return m_total_triangles; }
 
             std::vector<int> getControlPointIdx() const { return m_ctrl_verts_idx; }
-            std::vector<int> getSamplePointIdx() const { return m_sample_verts_idx; }
 
             SolidGeometryProxy_Device<3> getSurfaceProxyForFSI();
 
@@ -86,7 +85,6 @@ namespace fsi
             std::vector<int> m_tet_start_idx;
             std::vector<int> m_ctrl_verts_start_idx;
             std::vector<int> m_ctrl_verts_idx;
-            std::vector<int> m_sample_verts_idx;
 
             std::vector<mat3_t> m_tet_FaInv;
 
@@ -138,7 +136,6 @@ namespace fsi
             size_t getTotalVertices() const { return m_total_vertices; }
             size_t getTotalTriangles() const { return m_total_triangles; }
             std::vector<int> getControlPointIdx() const { return m_ctrl_verts_idx; }
-            std::vector<int> getSamplePointIdx() const { return m_sample_verts_idx; }
 
         private:
             std::vector<std::unique_ptr<Mesh2D>> m_meshes;
@@ -153,7 +150,6 @@ namespace fsi
             std::vector<int> m_tri_start_idx;
             std::vector<int> m_ctrl_verts_start_idx;
             std::vector<int> m_ctrl_verts_idx;
-            std::vector<int> m_sample_verts_idx;
 
             size_t m_total_vertices = 0;
             size_t m_total_triangles = 0;
